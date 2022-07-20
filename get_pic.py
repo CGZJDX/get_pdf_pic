@@ -48,11 +48,11 @@ class GetPic:
     def to_pic(self, doc, zoom, pg, pic_path):
         """
         convert single page PDF to pic
-        :param doc: the doc object of the image
-        :param zoom: image scaling, type int, the larger the value, the higher the resolution
+        :param doc: the doc object of the pic
+        :param zoom: pic scaling, type int, the larger the value, the higher the resolution
         :param pg: the index of the object in doc_pics
-        :param pic_path: image save path
-        :return: image path
+        :param pic_path: pic save path
+        :return: pic path
         """
         rotate = int(0)
         trans = fitz.Matrix(zoom, zoom).preRotate(rotate)
@@ -164,13 +164,13 @@ class GetPic:
                         last_pgn = pgn - 1
                         # self.pic_info[last_pgn]['loc_bottom']) < len(self.pic_info[last_pgn]['loc_top']
                         # it means that the keyword r'[图表]+\s*\d+[:：\s]*' exists on the previous page and is not matched with the corresponding keyword r'来源[:：\s]'
-                        # It can be considered that the keyword r'[图表]+\s*\d+[:：\s]*' on the previous page until the bottom part corresponds to the upper half of the chart across the pages
-                        # The current page keyword r'来源[:：\s]' and above until the top part corresponds to the lower part of the spread chart
+                        # it can be considered that the keyword r'[图表]+\s*\d+[:：\s]*' on the previous page until the bottom part corresponds to the upper half of the chart across the pages
+                        # the current page keyword r'来源[:：\s]' and above until the top part corresponds to the lower part of the spread chart
                         if last_pgn in self.pic_info and \
                             len(self.pic_info[last_pgn]['loc_bottom']) < len(self.pic_info[last_pgn]['loc_top']):
-                            # Save the coordinates of the bottom edge of the previous page
+                            # save the coordinates of the bottom edge of the previous page
                             self.pic_info[last_pgn]['loc_bottom'].append(((0, 0, 0, 0), ''))
-                            # Save the coordinates of the top edge of the current page
+                            # save the coordinates of the top edge of the current page
                             loc_top.append(((0, canvas_size[3], 0, canvas_size[3]), \
                                 self.pic_info[last_pgn]['loc_top'][-1][1] + '@~@continue'))
                         # if there is no keyword r'[图表]+\s*\d+[:：\s]*' on the previous page that is paired with the corresponding keyword r'来源[:：\s]' on the current page
@@ -267,8 +267,8 @@ class GetPic:
                             loc_list[item_list[level_order]][0][0][2])
                     level_order += 1
                     x2 = v['left'] + level_order * width / level_count
-                    # If there are multiple charts on a horizontal line and the current chart is not the rightmost chart
-                    # Compare x2 with the x1 coordinate of the chart on the right side of the current chart, and take the smaller value as the x2 coordinate of the current chart
+                    # if there are multiple charts on a horizontal line and the current chart is not the rightmost chart
+                    # compare x2 with the x1 coordinate of the chart on the right side of the current chart, and take the smaller value as the x2 coordinate of the current chart
                     if level_count > 1 and level_order < level_count:
                         x2 = min(min(x2, loc_list[item_list[level_order]][0][0][0]), \
                             loc_list[item_list[level_order]][0][0][2])
@@ -292,7 +292,7 @@ class GetPic:
         """
         pic_count_dict = {}
         pic_list = os.listdir(cropped_pic_path)
-        # Save the picture to the dictionary pic_count_dict according to the name. If it is a cross-page chart, the same name will correspond to multiple pics
+        # save the picture to the dictionary pic_count_dict according to the name. If it is a cross-page chart, the same name will correspond to multiple pics
         for pic in pic_list:
             pic_name = pic.split('.')[0].split('@~@')[0]
             if pic_name in pic_count_dict:

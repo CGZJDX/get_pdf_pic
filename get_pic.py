@@ -1,4 +1,5 @@
-# 需要安装的包包括：pdfminer3k, fitz, PyMuPDF
+# this project proposes a method to extract charts from PDF reports
+# packages that need to be installed include: pdfminer3k, fitz, PyMuPDF
 from pdfminer.pdfparser import PDFParser, PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import PDFPageAggregator
@@ -13,45 +14,45 @@ import os
 class GetPic:
     def __init__(self, filename, password=''):
         """
-        初始化
-        :param filename: pdf路径
-        :param password: 密码
+        initialization
+        :param filename: PDF file path
+        :param password: password
         """
         with open(filename, 'rb') as file:
-            # 创建文档分析器
+            # create a document analyzer
             self.parser = PDFParser(file)
-        # 创建文档
+        # create documentation
         self.doc = PDFDocument()
-        # 连接文档与文档分析器
+        # connect documents with document analyzer
         self.parser.set_document(self.doc)
         self.doc.set_parser(self.parser)
-        # 初始化, 提供初始密码, 若无则为空字符串
+        # initialization, get the initial password, or an empty string if none
         self.doc.initialize(password)
-        # 检测文档是否提供txt转换, 不提供就忽略, 抛出异常
+        # check whether the document provides txt conversion, ignore it if not, throw an exception
         if not self.doc.is_extractable:
             raise PDFTextExtractionNotAllowed
         else:
-            # 创建PDF资源管理器, 管理共享资源
+            # create a PDF explorer to manage shared resources
             self.resource_manager = PDFResourceManager()
-            # 创建一个PDF设备对象
+            # create a PDF device object
             self.laparams = LAParams()
             self.device = PDFPageAggregator(self.resource_manager, laparams=self.laparams)
-            # 创建一个PDF解释器对象
+            # create a PDF interpreter object
             self.interpreter = PDFPageInterpreter(self.resource_manager, self.device)
-            # pdf的page对象列表
+            # create a list of PDF page objects
             self.doc_pdfs = list(self.doc.get_pages())
-        #  打开PDF文件, 生成一个包含图片doc对象的可迭代对象
+        # open the PDF file and generate an iterable object containing image doc objects
         self.doc_pics = fitz.open(filename)
         self.pic_info = {}
 
     def to_pic(self, doc, zoom, pg, pic_path):
         """
-        将单页pdf转换为pic
-        :param doc: 图片的doc对象
-        :param zoom: 图片缩放比例, type int, 数值越大分辨率越高
-        :param pg: 对象在doc_pics中的索引
-        :param pic_path: 图片保存路径
-        :return: 图片的路径
+        convert single page PDF to pic
+        :param doc: the doc object of the image
+        :param zoom: image scaling, type int, the larger the value, the higher the resolution
+        :param pg: the index of the object in doc_pics
+        :param pic_path: image save path
+        :return: image path
         """
         rotate = int(0)
         trans = fitz.Matrix(zoom, zoom).preRotate(rotate)
@@ -62,17 +63,17 @@ class GetPic:
     
     def get_level(self, zip_loc_list):
         """
-        记录每页PDF上图表的相对水平位置
-        从上到下依次为level_0，level_1，...，level_n
-        可以有几个图表在同一水平面上，即level_k(k=0,1,...,n)相同
-        :param zip_loc_list: 包含loc_top和loc_bottom，这两个数组的元素一一对应
-        示例：
-        [(((33.8, 727.6025, 152.91049999999998, 737.4499999999999), '表 9：微盟 – 收入利润表'), 
-        ((33.250054999999996, 388.634, 198.79753000000002, 396.95000000000005), '资料来源：公司财报，安信证券研究中心预测')), 
-        (((33.8, 312.48249999999996, 158.16049999999998, 322.33), '表 10：微盟 – 现金流量表'), 
-        ((33.250054999999996, 123.634, 198.79753000000002, 131.95), '资料来源：公司财报，安信证券研究中心预测'))]
-        :return: 返回字典，key为相对水平位置，value为对应的图表列表，列表中的值是zip_loc_list中对应图表的index
-        示例：
+        record the relative horizontal position of the chart on each page of the PDF
+        from top to bottom are level_0, level_1, ..., level_n
+        there can be several charts on the same level, i.e. the same level_k(k=0,1,...,n)
+        :param zip_loc_list: contains two arrays of loc_top and loc_bottom, and the elements of these two arrays correspond one-to-one
+        example:
+        [(((33.8, 727.6025, 152.91049999999998, 737.4499999999999), '表 9:微盟-收入利润表'), 
+        ((33.250054999999996, 388.634, 198.79753000000002, 396.95000000000005), '资料来源:公司财报,安信证券研究中心预测')), 
+        (((33.8, 312.48249999999996, 158.16049999999998, 322.33), '表 10:微盟-现金流量表'), 
+        ((33.250054999999996, 123.634, 198.79753000000002, 131.95), '资料来源:公司财报,安信证券研究中心预测'))]
+        :return: a dictionary, the key is the relative horizontal position, the value is the corresponding chart list, and the value in the list is the index of the corresponding chart in zip_loc_list
+        example:
         {'level_0': [0], 'level_1': [1], 'level_2': [2, 3]}
         """
         level_dict = {}
@@ -80,25 +81,25 @@ class GetPic:
         visit = [0] * length
         level_count = 0
         for i in range(length):
-            # 为1表示对应的图表已经确定好其相对水平位置了，直接跳过
+            # a value of 1 indicates that the corresponding chart has already determined its relative horizontal position, skip it directly
             if visit[i] == 1:
                 continue
-            # i对应的图表处在与之前确定位置的图表不同的水平位置上
+            # the chart corresponding to i is at a different horizontal position than the chart whose position was previously determined
             visit[i] = 1
             level_count_str = 'level_' + str(level_count)
             level_count += 1
             level_dict[level_count_str] = [i]
-            # 排在i之前的对应的图表都已经确定好其相对水平位置了，不用再遍历了
+            # the corresponding charts before i have already determined their relative horizontal positions, so there is no need to traverse them
             for j in range(i + 1, length):
-                # 为1表示对应的图表已经确定好其相对水平位置了，直接跳过
+                # a value of 1 indicates that the corresponding chart has already determined its relative horizontal position, skip it directly
                 if visit[j] == 1:
                     continue
 
-                # 将两个待比较的图表中更扁平的图表对应的高度值保存下来
+                # save the height value corresponding to the flatter chart of the two charts to be compared
                 high = min(abs(zip_loc_list[i][0][0][3] - zip_loc_list[i][1][0][1]), \
                     abs(zip_loc_list[j][0][0][3] - zip_loc_list[j][1][0][1]))
                 
-                # 如果一个图表把另一个图表完全包住，即上边界比另一个高，下边界比另一个低，那么认为两个图表在一条水平线上
+                # if one chart completely surrounds the other, i.e. the upper border is higher than the other, and the lower border is lower than the other, then the two charts are considered to be on a horizontal line
                 if zip_loc_list[i][0][0][3] <= zip_loc_list[j][0][0][3] and \
                     zip_loc_list[i][1][0][1] >= zip_loc_list[j][1][0][1]:
                     visit[j] = 1
@@ -109,12 +110,12 @@ class GetPic:
                     visit[j] = 1
                     level_dict[level_count_str].append(j)
                 
-                # 如果两个图表上边界高度之差和下边界高度之差都大于high值，那么认为两个图表不在一条水平线上
+                # if the difference between the height of the upper border and the height of the lower border of the two charts is greater than the value of high, then the two charts are not considered to be on a horizontal line
                 elif min(abs(zip_loc_list[i][0][0][3] - zip_loc_list[j][0][0][3]), \
                     abs(zip_loc_list[i][1][0][1] - zip_loc_list[j][1][0][1])) >= high:
                     continue
                 
-                # 其他情况则认为两个图表在一条水平线上
+                # in other cases, the two charts are considered to be on a horizontal line
                 else:
                     visit[j] = 1
                     level_dict[level_count_str].append(j)
@@ -122,26 +123,26 @@ class GetPic:
 
     def get_pic_loc(self, doc, pgn):
         """
-        获取单页中图片的位置
-        :param doc: pdf的doc对象
-        :return: 返回一个list, 元素为图片名称和上下y坐标元组组成的tuple. 当前页的尺寸
+        get the position of an image in a single page
+        :param doc: doc object for PDF
+        :return: a tuple, elements include loc_top, loc_bottom, the dimensions of the PDF, the leftmost and rightmost coordinates of all LT objects of a single-page PDF
         """
         self.interpreter.process_page(doc)
         layout = self.device.get_result()
-        # pdf的尺寸, tuple, (width, height)
+        # the dimensions of the PDF, tuple, (width, height)
         canvas_size = layout.bbox
-        # 图片名称坐标
+        # the coordinates of the chart name
         loc_top = []
-        # 来源坐标
+        # the coordinates of the data source
         loc_bottom = []
-        # left和right用于记录单页所有LT对象的最左和最右坐标
+        # left and right are used to record the leftmost and rightmost coordinates of all LT objects in a single-page PDF
         left = canvas_size[2]
         right = 0
-        # text_order用于记录当前页PDF中第一个含有文本的LT对象
-        # first_text用于记录其文本内容
+        # text_order is used to record the first LT object containing text in the current page PDF
+        # first_text is used to record its text content
         text_order = 0
         first_text = ''
-        # 遍历单页的所有LT对象
+        # iterate over all LT objects of a single-page PDF
         for i in layout:
             left = min(left, i.bbox[0])
             right = max(right, i.bbox[2])
@@ -150,30 +151,30 @@ class GetPic:
                 text_order += 1
                 if text_order == 1:
                     first_text = text
-                # 匹配关键词
+                # match keywords
                 if re.search(r'[图表]+\s*\d+[:：\s]*', text):
                     title_start = re.search(r'[图表]+\s*\d+[:：\s]*', text).start()
                     loc_top.append((i.bbox, text[title_start: ].replace('\n', '')))
                 elif re.search(r'来源[:：\s]', text):
                     text = text.split('\n')[0]
                     loc_bottom.append((i.bbox, text))
-                    # 如果单页得到的第一个关键词是r'来源[:：\s]'而不是r'[图表]+\s*\d+[:：\s]*'
-                    # 那么有可能这是一个跨页的图表，需要去上一页中找是否有对应的关键词r'[图表]+\s*\d+[:：\s]*'
+                    # if the first keyword obtained on a single page is r'来源[:：\s]' instead of r'[图表]+\s*\d+[:：\s]*'
+                    # then it is possible that this is a cross-page chart, and we need to go to the previous page to find out whether there is corresponding keyword r'[图表]+\s*\d+[:：\s]*'
                     if len(loc_bottom) > 0 and len(loc_top) == 0:
                         last_pgn = pgn - 1
                         # self.pic_info[last_pgn]['loc_bottom']) < len(self.pic_info[last_pgn]['loc_top']
-                        # 说明上一页存在关键词r'[图表]+\s*\d+[:：\s]*'没有与对应的关键词r'来源[:：\s]'配对
-                        # 可以认为上一页关键词r'[图表]+\s*\d+[:：\s]*'以下到底边部分对应的是跨页图表的上半部分
-                        # 本页关键词r'来源[:：\s]'以上到顶边部分对应的是跨页图表的下半部分
+                        # it means that the keyword r'[图表]+\s*\d+[:：\s]*' exists on the previous page and is not matched with the corresponding keyword r'来源[:：\s]'
+                        # It can be considered that the keyword r'[图表]+\s*\d+[:：\s]*' on the previous page until the bottom part corresponds to the upper half of the chart across the pages
+                        # The current page keyword r'来源[:：\s]' and above until the top part corresponds to the lower part of the spread chart
                         if last_pgn in self.pic_info and \
                             len(self.pic_info[last_pgn]['loc_bottom']) < len(self.pic_info[last_pgn]['loc_top']):
-                            # 将上一页底边的坐标保存下来
+                            # Save the coordinates of the bottom edge of the previous page
                             self.pic_info[last_pgn]['loc_bottom'].append(((0, 0, 0, 0), ''))
-                            # 将本页顶边的坐标保存下来
+                            # Save the coordinates of the top edge of the current page
                             loc_top.append(((0, canvas_size[3], 0, canvas_size[3]), \
                                 self.pic_info[last_pgn]['loc_top'][-1][1] + '@~@continue'))
-                        # 如果上一页不存在关键词r'[图表]+\s*\d+[:：\s]*'与本页对应的关键词r'来源[:：\s]'配对
-                        # 那么需要把关键词r'来源[:：\s]'去除掉
+                        # if there is no keyword r'[图表]+\s*\d+[:：\s]*' on the previous page that is paired with the corresponding keyword r'来源[:：\s]' on the current page
+                        # then the keyword r'来源[:：\s]' needs to be removed
                         else:
                             if text_order == 1:  
                                 loc_top.append(((0, canvas_size[3], 0, canvas_size[3]), first_text))
@@ -184,18 +185,18 @@ class GetPic:
         
     def get_crops(self, pic_path, canvas_size, position, cropped_pic_name, cropped_pic_path):
         """
-        按给定位置截取图片
-        :param pic_path: 被截取的图片的路径
-        :param canvas_size: 图片为pdf时的尺寸, tuple, (0, 0, width, height)
-        :param position: 要截取的位置, tuple, (x1, y1, x2, y2)
-        :param cropped_pic_name: 截取的图片名称
-        :param cropped_pic_path: 截取的图片保存路径
+        extract charts by given coordinates
+        :param pic_path: the path of the pic
+        :param canvas_size: the size of the original PDF corresponding to the pic, tuple, (0, 0, width, height)
+        :param position: the coordinates of the chart to be extracted, tuple, (x1, y1, x2, y2)
+        :param cropped_pic_name: the name of the chart to be extracted
+        :param cropped_pic_path: the save path of the chart to be extracted
         :return:
         """
         img = Image.open(pic_path)
-        # 当前图片的尺寸 tuple(width, height)
+        # the size of the current image tuple(width, height)
         pic_size = img.size
-        # 截图的范围扩大值
+        # size_increase is a buffer value as margin for extraction
         size_increase = 10
         x1 = max(pic_size[0] * (position[0] - size_increase)/canvas_size[2], 0)
         x2 = min(pic_size[0] * (position[2] + size_increase)/canvas_size[2], pic_size[0])
@@ -203,28 +204,28 @@ class GetPic:
         y2 = min(pic_size[1] * (1 - (position[1] - size_increase)/canvas_size[3]), pic_size[1])
         try:
             cropped_img = img.crop((x1, y1, x2, y2))
-            # 保存截图文件的路径
+            # path to save the extracted chart
             path = os.path.join(cropped_pic_path, cropped_pic_name) + '.png'
             cropped_img.save(path)
-            print('成功截取图片:', cropped_pic_name)
+            print('we successfully extract:', cropped_pic_name)
         except Exception as e:
             print(e)
 
     def get_pic_info(self, pic_path, page_count):
         """
-        将PDF按页转成图片，并将相关信息按页保存在字典self.pic_info中
-        key为PDF的页码，value为对应的相关信息
-        :param pic_path: 被截取的图片路径
-        :param page_count: PDF的页数
+        Convert PDF to pictures by page and save related information in dictionary self.pic_info by page
+        The key is the page number of the PDF, and the value is the corresponding relevant information
+        :param pic_path: the path of the pic
+        :param page_count: the number of pages in the PDF
         :return:
         """
         if page_count <= 0:
             return
         for pgn in range(page_count):
-            # 获取当前页的doc
+            # get the doc of the current page
             doc_pdf = self.doc_pdfs[pgn]
             doc_pic = self.doc_pics[pgn]
-            # 将当前页转换为PNG, 返回值为图片路径
+            # convert the current page to PNG, the return value is the pic path
             path = self.to_pic(doc_pic, 2, pgn, pic_path)
             pgn_info = self.get_pic_loc(doc_pdf, pgn)
             self.pic_info[pgn] = {
@@ -238,17 +239,17 @@ class GetPic:
     
     def generate_result(self, cropped_pic_path):
         """
-        对PDF按页提取图表。图表是从PDF转成的图片上截取下来的，不是直接在PDF进行操作
-        :param cropped_pic_path: 截取的图片保存路径
+        extract charts by page from PDF. The charts are extracted from the pic converted from PDF, not directly in PDF
+        :param cropped_pic_path: the save path of the chart to be extracted
         :return:
         """
         for k, v in self.pic_info.items():
             loc_list = list(zip(v['loc_top'], v['loc_bottom']))
-            # loc_list为空表示该页PDF没有图表，直接跳过
+            # if loc_list is empty, it means that there is no chart in the PDF on this page, skip it directly
             if not loc_list:
                 continue
             width = abs(v['right'] - v['left'])
-            # 将图表列表按照图表的x1坐标升序重排
+            # reorder the chart list in ascending order by the x1 coordinate of the chart
             loc_list.sort(key=lambda x: x[0][0][0])
             path = v['path']
             canvas_size = v['canvas_size']
@@ -258,7 +259,7 @@ class GetPic:
             for level, item_list in level_dict.items():
                 level_count = len(item_list)
                 level_order = 0
-                # 一个水平面上，有几个图表就将width几等分，用于计算x1和x2坐标
+                # on a horizontal line, if there are several charts, then divide the width into equal parts for calculating the x1 and x2 coordinates
                 for item in item_list:
                     x1 = v['left'] + level_order * width / level_count
                     if level_order > 0:
@@ -266,8 +267,8 @@ class GetPic:
                             loc_list[item_list[level_order]][0][0][2])
                     level_order += 1
                     x2 = v['left'] + level_order * width / level_count
-                    # 如果一个水平面上有多个图表，并且当前图表不是最右边的一个图表
-                    # 令x2与当前图表右边图表的x1坐标进行比较，取较小值做为当前图表的x2坐标
+                    # If there are multiple charts on a horizontal line and the current chart is not the rightmost chart
+                    # Compare x2 with the x1 coordinate of the chart on the right side of the current chart, and take the smaller value as the x2 coordinate of the current chart
                     if level_count > 1 and level_order < level_count:
                         x2 = min(min(x2, loc_list[item_list[level_order]][0][0][0]), \
                             loc_list[item_list[level_order]][0][0][2])
@@ -285,13 +286,13 @@ class GetPic:
 
     def blend_pic(self, cropped_pic_path):
         """
-        对得到的图表进行遍历，将跨页的图表的上下两部分拼接成一张图表保存，并删除原来的上下两部分图表
-        :param cropped_pic_path: 截取的图片保存路径
+        traverse the obtained chart, splicing the upper and lower parts of the cross-page chart into one chart and save it, and delete the original upper and lower parts of the chart
+        :param cropped_pic_path: the save path of the chart to be extracted
         :return:
         """
         pic_count_dict = {}
         pic_list = os.listdir(cropped_pic_path)
-        # 将图片按照名字保存到字典pic_count_dict中，如果是跨页的图表，同一个名字会对应多张图片
+        # Save the picture to the dictionary pic_count_dict according to the name. If it is a cross-page chart, the same name will correspond to multiple pics
         for pic in pic_list:
             pic_name = pic.split('.')[0].split('@~@')[0]
             if pic_name in pic_count_dict:
@@ -305,17 +306,17 @@ class GetPic:
                 continue
             png1 = os.path.join(cropped_pic_path, v[0])
             png2 = os.path.join(cropped_pic_path, v[1])
-            # 避免上下顺序出错，加了一个判断
+            # to avoid errors in the upper and lower order, a judgment was added
             if '@~@continue' in png1:
                 png1, png2 = png2, png1
             img1, img2 = Image.open(png1), Image.open(png2)
             size1, size2 = img1.size, img2.size
-            # 新图片的宽为两张图的较小值，高为两张图的高之和
+            # the width of the new pic is the smaller of the two pics, and the height is the sum of the heights of the two pics
             joint = Image.new('RGB', (min(size1[0], size2[0]), size1[1] + size2[1]))
             loc1, loc2 = (0, 0), (0, size1[1])
             joint.paste(img1, loc1)
             joint.paste(img2, loc2)
-            # 删除原来的图片，保存新图片
+            # delete the original pic and save the new pic
             os.remove(png1)
             os.remove(png2)
             joint.save(png1)
